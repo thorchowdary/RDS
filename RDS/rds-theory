@@ -1,0 +1,105 @@
+client--waf--lb--frontend--b1-b2-b2--cache--database
+
+b1,b2,b3 == services/applications/microservices
+
+in the above workflow everything id tightly coupled if one backend/service
+goes down then entire application goes down
+
+client--waf--lb--frontend--b1-b2-b2--temporary storage--cache--database
+
+now we have temporary storage in between no it is loosely coupled
+
+temporary storage:
+-----------------------
+s3, ebs, cache, database , messaging system(sqs,mq,kafka,msk...etc)
+
+cache:
+--------
+1.redis 
+2.memcache (aws managed service)
+
+cache has:
+instance type
+like rds even cache has endpoint
+we need:
+    subnet group 
+    security group :port 6379(redis)
+    vpc
+    ex:cache.m5.xlarge
+***cache does not have storage, it store data in inmemory(we store data in fromat of keys&values)
+    ex: key1:value
+        key2:value
+
+we can login into cache:
+by rediscli
+    redis cli commands:
+        we can delete specify key in the cache:
+            ex:del key
+***should not run key * in cache the entire cache will go done same thing inside the database should not do select *
+
+we can take cache backup and restore it
+suppose if we have the 10 years data in cache our application will become slow:
+so, while developer develops the code he will configure this (TTL:Time To Leave) it is like how long on key to be alive in cache 
+we store session data/intial login data/cookies 
+
+
+storage solutions:
+------------------
+permanent storage: s3/ebs/database(best place)
+temporary storage: cache/queue
+
+database:
+----------
+writeonce--master
+read only-- replica(many replicas we can have )
+
+databases types:
+------------------
+sql -structures query language - employee storage etc,...
+no sql - non structured query language -- maps data, you tube searching, flip kart data storing etc..
+
+RDS(PAAS):(relational database service)
+----------------------------------------
+mysql -h mysql–instance1.123456789012.us-east-1.rds.amazonaws.com -P 3306 -u mymasteruser -p
+
+if you want to take the backup:
+------------------------------
+we have two ways
+1.aws will take the backups automatically based on how you configured while creating rds
+    the problem with this is you cannot take particular database backup, whenerver it takes backup it takes the entire data of the different databases in the rds.
+
+2.manually taking database backup
+    you can take backup of particular database
+
+will store those database backups into s3
+
+to backup the database
+--------------------------
+mysqldump -h rdsEndpoint -u userName -p databaseName > backup_filename.sql
+
+to restore the database:
+----------------------------
+mysqldump -h rdsEndpoint -u userName -p databaseName <> backup_filename.sql
+
+
+rds - backup(console backup)---- s3 (this bucket will be hidden)
+by default whenever the taking backup through console it will also store in s3 but it is hidden
+
+rds-----manualbackup(mention database name to backup)------storein----s3
+
+we can connect the rds with the application and bastion:
+
+once you taken the backup that has to store first in bastion and we have to send it s3 later and vice versa on restoring as well
+
+once you taking backup you have to be take care of the storage of the baston if you are taking 100gb backup and you bastion storage is 50gb you will get an storage issue, we have to make sure bastion_storage>backup_storage
+
+types of deployment:
+--------------------
+cold deployment:
+-----------------
+stop server-------deploy code--------start the server
+
+hot deployment:
+---------------
+we are deploying the code inthe server when the server is running
+
